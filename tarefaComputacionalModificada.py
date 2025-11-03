@@ -41,7 +41,7 @@ def dg_dy(x, y):
     return b(x) * 4 * (1 + y)**3
 
 # =============================================================================
-# MÉTODOS NUMÉRICOS (1)
+# MÉTODOS NUMÉRICOS (1) - TAREFA COMPUTACIONAL 1
 # =============================================================================
 
 def euler_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
@@ -104,8 +104,19 @@ def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
                       [-h * r(x_k1, Nu) / p(x_k1), 1]])
         
         b = np.array([y[k],
-                      z[k] + h * f(x_k1, f0) / p(x_k1)])
+                      z[k] - h * f(x_k1, f0) / p(x_k1)]) # Correção: f0 era somado, deve ser subtraído (ou f é subtraído no sistema)
         
+        # Vamos reescrever o sistema para evitar confusão de sinal
+        # y[k+1] - h*z[k+1] = y[k]
+        # z[k+1] - h*(r*y[k+1] - f)/p = z[k]
+        # -> -h*(r/p)*y[k+1] + z[k+1] = z[k] - h*f/p
+        
+        A = np.array([[1, -h],
+                      [-h * r(x_k1, Nu) / p(x_k1), 1]])
+        
+        b = np.array([y[k],
+                      z[k] - h * f(x_k1, f0) / p(x_k1)])
+
         sol = np.linalg.solve(A, b)
         
         y[k + 1] = sol[0]
@@ -167,17 +178,26 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     
     # Loop de integração
     for k in range(n):
+        x_k = x_vec[k]
         x_k1 = x_vec[k + 1]
         
         # Calcular dz_dx no ponto k (explícito)
-        dz_k = (r(x_vec[k], Nu) * y[k] - f(x_vec[k], f0)) / p(x_vec[k])
+        dz_dx_k = (r(x_k, Nu) * y[k] - f(x_k, f0)) / p(x_k)
 
-        # Sistema linear
+        # Sistema linear:
+        # y[k+1] = y[k] + h/2 * (z[k] + z[k+1])
+        # z[k+1] = z[k] + h/2 * (dz_dx_k + dz_dx_k1)
+        # onde dz_dx_k1 = (r(x_k1)*y[k+1] - f(x_k1)) / p(x_k1)
+        
+        # Rearranjando:
+        # y[k+1] - (h/2)*z[k+1] = y[k] + (h/2)*z[k]
+        # -(h/2)*(r/p)*y[k+1] + z[k+1] = z[k] + (h/2)*dz_dx_k - (h/2)*(f/p)
+        
         A = np.array([[1, -h/2],
-                    [-h/2 * r(x_k1, Nu) / p(x_k1), 1]])
+                      [-h/2 * r(x_k1, Nu) / p(x_k1), 1]])
 
         b = np.array([y[k] + (h/2) * z[k],
-                    z[k] + (h/2) * (dz_k + f(x_k1, f0) / p(x_k1))])
+                      z[k] + (h/2) * (dz_dx_k - f(x_k1, f0) / p(x_k1))]) # Correção: f0 era somado, deve ser subtraído
 
         sol = np.linalg.solve(A, b)
         
@@ -227,7 +247,7 @@ def runge_kutta_4(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     return y
 
 # =============================================================================
-# MÉTODOS NUMÉRICOS (2)
+# MÉTODOS NUMÉRICOS (2) - TAREFA COMPUTACIONAL 2
 # =============================================================================
 
 def rk4_nao_linear(x_vec, y0, dy0, Nu=1.0, f0=0.0, epsilon=1.0):
@@ -297,28 +317,31 @@ def rk4_linearizado(x_vec, z0, dz0, y_vec, Nu=1.0, epsilon=1.0):
         k1_w = (r(x_k, Nu)*z_k + epsilon*dg_dy(x_k, y_k)*z_k) / p(x_k)
         
         # k2
+        x_temp = x_k + h/2
         z_temp = z_k + h/2 * k1_z
         w_temp = w_k + h/2 * k1_w
-        y_temp = y_vec[k]  # simplificação: usar y no ponto k
+        # Interpolar y para o ponto médio
+        y_temp = (y_vec[k] + y_vec[k+1]) / 2 
         
         k2_z = w_temp
-        k2_w = (r(x_k + h/2, Nu)*z_temp + epsilon*dg_dy(x_k + h/2, y_temp)*z_temp) / p(x_k + h/2)
+        k2_w = (r(x_temp, Nu)*z_temp + epsilon*dg_dy(x_temp, y_temp)*z_temp) / p(x_temp)
         
         # k3
         z_temp = z_k + h/2 * k2_z
         w_temp = w_k + h/2 * k2_w
-        y_temp = y_vec[k]
+        # y_temp já foi calculado
         
         k3_z = w_temp
-        k3_w = (r(x_k + h/2, Nu)*z_temp + epsilon*dg_dy(x_k + h/2, y_temp)*z_temp) / p(x_k + h/2)
+        k3_w = (r(x_temp, Nu)*z_temp + epsilon*dg_dy(x_temp, y_temp)*z_temp) / p(x_temp)
         
         # k4
+        x_temp = x_k + h
         z_temp = z_k + h * k3_z
         w_temp = w_k + h * k3_w
-        y_temp = y_vec[min(k+1, n)]  # tentar pegar o próximo ponto se possível
+        y_temp = y_vec[k+1] 
         
         k4_z = w_temp
-        k4_w = (r(x_k + h, Nu)*z_temp + epsilon*dg_dy(x_k + h, y_temp)*z_temp) / p(x_k + h)
+        k4_w = (r(x_temp, Nu)*z_temp + epsilon*dg_dy(x_temp, y_temp)*z_temp) / p(x_temp)
         
         # Atualizar
         z[k+1] = z_k + h/6 * (k1_z + 2*k2_z + 2*k3_z + k4_z)
@@ -330,10 +353,12 @@ def rk4_linearizado(x_vec, z0, dz0, y_vec, Nu=1.0, epsilon=1.0):
 # TESTE (exemplo de uso)
 # =============================================================================
 
-'''
-if __name__ == "__main__":
+def teste_tarefas_computacionais():
+    """
+    Função para testar os métodos numéricos básicos (Tarefas Computacionais 1 e 2)
+    """
     print("="*70)
-    print("TESTANDO OS MÉTODOS NUMÉRICOS")
+    print("TESTANDO OS MÉTODOS NUMÉRICOS (TAREFAS COMPUTACIONAIS 1 E 2)")
     print("="*70)
     
     # Parâmetros do teste
@@ -350,7 +375,7 @@ if __name__ == "__main__":
     epsilon = 0.0  # começar com caso linear
     
     print(f"\nParâmetros:")
-    print(f"  n = {n} pontos")
+    print(f"  n = {n} pontos (h = {1.0/n:.3f})")
     print(f"  y(0) = {y0}")
     print(f"  y'(0) = {dy0}")
     print(f"  Nu = {Nu}")
@@ -394,7 +419,7 @@ if __name__ == "__main__":
     
     # Testar método LINEARIZADO
     print("\n" + "-"*70)
-    print("MÉTODO LINEARIZADO")
+    print("MÉTODO LINEARIZADO (Tarefa Computacional 3 - parte do Newton)")
     print("-"*70)
     
     # Condições para o linearizado
@@ -408,9 +433,8 @@ if __name__ == "__main__":
     print(f"  → z(0) = {z_lin[0]:.6f} (deve ser 0.0)")
     
     print("\n" + "="*70)
-    print("TESTES CONCLUÍDOS!")
+    print("TESTES DAS TAREFAS COMPUTACIONAIS CONCLUÍDOS!")
     print("="*70)
-    '''
 
 # =============================================================================
 # TAREFA NUMÉRICA 1
@@ -443,7 +467,13 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
         u_p = np.zeros_like(v)
     
     # Determinar coeficientes a e b
-    a = alpha - u_p[0]
+    # y(0) = a*v(0) + b*w(0) + u_p(0)
+    # alpha = a*1 + b*0 + 0 -> a = alpha
+    a = alpha - u_p[0] # u_p[0] é 0 pelas C.I., mas deixamos por consistência
+    
+    # y(1) = a*v(1) + b*w(1) + u_p(1)
+    # beta = a*v(L) + b*w(L) + u_p(L)
+    # b = (beta - a*v(L) - u_p(L)) / w(L)
     b = (beta - a * v[-1] - u_p[-1]) / w[-1]
     
     # Solução final
@@ -458,8 +488,14 @@ def solucaoExata(x, alpha, beta, Nu):
     exp_neg = np.exp(-sqrt_nu)
     exp_pos = np.exp(sqrt_nu)
     
+    # Denominador
+    den = exp_pos - exp_neg # sinh(sqrt_nu) * 2
+    if abs(den) < 1e-14:
+        # Caso Nu -> 0, usar interpolação linear
+        return alpha + (beta - alpha) * x
+
     # Resolver para B
-    B = (beta - alpha * exp_neg) / (exp_pos - exp_neg)
+    B = (beta - alpha * exp_neg) / den
     
     # Resolver para A
     A = alpha - B
@@ -473,9 +509,9 @@ def calcularErro(y_numerica, y_exata):
     erroQuadratico = np.sqrt(np.mean((y_numerica - y_exata)**2))
     return erroQuadratico
 
-def tarefaNumerica1(h, Nu, metodo, alpha=0.1, beta=0.5, f0=0.0, epsilon=0.0):
+def tarefaNumerica1(h, Nu, metodo, alpha=0.1, beta=0.5, f0=0.0):
     # Parâmetros do teste
-    n = int(1 / h)
+    n = int(1.0 / h)
     x_vec = np.linspace(0, 1, n + 1)
 
     # Solução exata
@@ -498,6 +534,8 @@ def casosTarefaNumerica1():
     # Armazenar todos os resultados
     resultados = {}
     
+    print("\nExecutando Tarefa Numérica 1 (Cálculo de Erros)...")
+    
     for Nu in Nu_valores:
         resultados[Nu] = {}
         for h in h_valores:
@@ -509,10 +547,8 @@ def casosTarefaNumerica1():
                     'y_numerica': y_num,
                     'y_exata': y_ex
                 }
-    
+    print("Cálculo de erros da Tarefa 1 concluído.")
     return resultados
-
-    import matplotlib.pyplot as plt
 
 def plotarGraficosConvergencia(resultados):
     Nu_valores = [1, 16, 256]
@@ -528,7 +564,8 @@ def plotarGraficosConvergencia(resultados):
     }
     
     # Criar uma figura com 3 subplots (um para cada Nu)
-    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
+    fig.suptitle('Tarefa 1: Análise de Convergência (Erro RMS vs h)', fontsize=16)
     
     for idx, Nu in enumerate(Nu_valores):
         ax = axs[idx]
@@ -543,14 +580,27 @@ def plotarGraficosConvergencia(resultados):
             # Plotar em escala log-log
             ax.loglog(h_valores, erros, 'o-', label=nomes_metodos[metodo])
         
+        # Plotar linhas de referência para ordens
+        if 'rk4' in metodos:
+            erros_rk4 = [resultados[Nu][h]['rk4']['erro'] for h in h_valores]
+            h_ref = np.array(h_valores)
+            ax.loglog(h_ref, (erros_rk4[1]/h_ref[1]**4) * h_ref**4, 'k:', label='O(h⁴)')
+            ax.loglog(h_ref, (erros_rk4[1]/h_ref[1]**2) * h_ref**2, 'k--', label='O(h²)')
+            ax.loglog(h_ref, (erros_rk4[1]/h_ref[1]**1) * h_ref**1, 'k-.', label='O(h¹)')
+
+
         ax.set_xlabel('h (tamanho do passo)')
-        ax.set_ylabel('Erro')
+        if idx == 0:
+            ax.set_ylabel('Erro RMS')
         ax.set_title(f'Nu = {Nu}')
         ax.legend()
         ax.grid(True, which="both", ls="-", alpha=0.3)
+        ax.set_xticks(h_valores)
+        ax.set_xticklabels(map(str, h_valores))
     
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig('convergencia_tarefa1.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'convergencia_tarefa1.png' salvo.")
     plt.show()
 
 def calcularFluxoCalor(x_vec, y, Nu):
@@ -569,21 +619,26 @@ def analisarFluxosCalor(resultados):
     Nu_valores = [1, 16, 256]
     h_valores = [0.5, 0.05, 0.005, 0.0005]
     
+    print("\n" + "="*90)
+    print("TAREFA 1: ANÁLISE DE FLUXO DE CALOR (q_conv)")
+    print("Comparando integrais da solução Exata vs Numérica (RK4)")
+    print("="*90)
+    
     for Nu in Nu_valores:
-        # print(f"\n{'='*90}")
-        # print(f"Nu = {Nu}")
-        # print(f"{'='*90}")
-        # print(f"{'h':<10} {'Trap (Num)':<15} {'Simp (Num)':<15} {'Trap (Exato)':<15} {'Simp (Exato)':<15}")
-        # print("-"*90)
+        print(f"\nNu = {Nu}")
+        print("─"*90)
+        print(f"{'h':<10} {'Trap (Num)':<15} {'Simp (Num)':<15} {'Trap (Exato)':<15} {'Simp (Exato)':<15}")
+        print("─"*90)
         
         for h in h_valores:
             # Criar vetor x
             n = int(1.0 / h)
+            if n % 2 != 0: n += 1 # Garantir n par para Simpson
             x_vec = np.linspace(0, 1, n + 1)
             
             # Pegar solução numérica (RK4) e exata
-            y_numerica = resultados[Nu][h]['rk4']['y_numerica']
-            y_exata = resultados[Nu][h]['rk4']['y_exata']
+            # Recalcular para garantir n par
+            y_numerica, y_exata, _ = tarefaNumerica1(x_vec[1]-x_vec[0], Nu, 'rk4')
             
             # Calcular fluxos da solução numérica
             fluxo_trap_num, fluxo_simp_num = calcularFluxoCalor(x_vec, y_numerica, Nu)
@@ -594,7 +649,7 @@ def analisarFluxosCalor(resultados):
             # Imprimir resultados
             print(f"{h:<10.4f} {fluxo_trap_num:<15.8f} {fluxo_simp_num:<15.8f} {fluxo_trap_ex:<15.8f} {fluxo_simp_ex:<15.8f}")
         
-        print()
+        print("─"*90)
 
 # =============================================================================
 # TAREFA NUMÉRICA 2
@@ -613,9 +668,15 @@ def solucaoExataAfim(x, alpha, beta, Nu, f0):
     # Calcular exponenciais
     exp_neg = np.exp(-sqrt_nu)
     exp_pos = np.exp(sqrt_nu)
+
+    # Denominador
+    den = exp_pos - exp_neg
+    if abs(den) < 1e-14:
+        # Caso Nu -> 0, usar interpolação linear
+        return (alpha_h + (beta_h - alpha_h) * x) + y_p
     
     # Resolver para B
-    B = (beta_h - alpha_h * exp_neg) / (exp_pos - exp_neg)
+    B = (beta_h - alpha_h * exp_neg) / den
     
     # Resolver para A
     A = alpha_h - B
@@ -625,9 +686,9 @@ def solucaoExataAfim(x, alpha, beta, Nu, f0):
     
     return y_ex
 
-def tarefaNumerica2(h, Nu, metodo, f0, alpha=0.1, beta=0.5, epsilon=0.0):
+def tarefaNumerica2(h, Nu, metodo, f0, alpha=0.1, beta=0.5):
     # Parâmetros do teste
-    n = int(1 / h)
+    n = int(1.0 / h)
     x_vec = np.linspace(0, 1, n + 1)
 
     # Solução exata
@@ -650,6 +711,8 @@ def casosTarefaNumerica2():
     
     resultados = {}
     
+    print("\nExecutando Tarefa Numérica 2 (Cálculo de Erros com f0 != 0)...")
+    
     for f0 in f0_valores:
         resultados[f0] = {}
         for h in h_valores:
@@ -661,7 +724,8 @@ def casosTarefaNumerica2():
                     'y_numerica': y_num,
                     'y_exata': y_ex
                 }
-    
+                
+    print("Cálculo de erros da Tarefa 2 concluído.")
     return resultados
 
 def plotarGraficosConvergencia2(resultados):
@@ -679,7 +743,8 @@ def plotarGraficosConvergencia2(resultados):
     }
     
     # Criar uma figura com subplots (um para cada f0)
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharey=True)
+    fig.suptitle('Tarefa 2: Análise de Convergência (Erro RMS vs h) para Nu = 1', fontsize=16)
     axs = axs.flatten()
     
     for idx, f0 in enumerate(f0_valores):
@@ -696,13 +761,16 @@ def plotarGraficosConvergencia2(resultados):
             ax.loglog(h_valores, erros, 'o-', label=nomes_metodos[metodo])
         
         ax.set_xlabel('h (tamanho do passo)')
-        ax.set_ylabel('Erro')
-        ax.set_title(f'Nu = {Nu}, f0 = {f0}')
+        ax.set_ylabel('Erro RMS')
+        ax.set_title(f'f0 = {f0}')
         ax.legend()
         ax.grid(True, which="both", ls="-", alpha=0.3)
+        ax.set_xticks(h_valores)
+        ax.set_xticklabels(map(str, h_valores))
     
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig('convergencia_tarefa2.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'convergencia_tarefa2.png' salvo.")
     plt.show()
 
 def plotarSolucoesTarefa2(resultados):
@@ -722,11 +790,12 @@ def plotarSolucoesTarefa2(resultados):
     
     plt.xlabel('x')
     plt.ylabel('y(x)')
-    plt.title('Soluções para diferentes valores de f₀ (h = 0.0005, Nu = 1)')
+    plt.title('Tarefa 2: Soluções para diferentes valores de f₀ (h = 0.0005, Nu = 1)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig('solucoes_tarefa2.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'solucoes_tarefa2.png' salvo.")
     plt.show()
 
 # =============================================================================
@@ -735,6 +804,7 @@ def plotarSolucoesTarefa2(resultados):
 
 def metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon, t_inicial=0.0, max_iter=50, tol=1e-8):
     t = t_inicial
+    y = np.zeros_like(x_vec) # Inicializar y
     
     for iteracao in range(max_iter):
         # Resolver problema não-linear com y'(0) = t
@@ -747,17 +817,17 @@ def metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon, t_inicial=0.0, m
             print(f"  ✅ Convergiu em {iteracao+1} iterações (t = {t:.6f})")
             return y, t
         
-        # Resolver problema linearizado para calcular dy/dt
+        # Resolver problema linearizado para calcular dy/dt = z
         z = rk4_linearizado(x_vec, 0.0, 1.0, y, Nu, epsilon)
         
         # Atualização de Newton: t_novo = t - residuo / z(1)
         if abs(z[-1]) < 1e-14:
-            print("  ❌ Divisão por zero no método de Newton")
+            print(f"  ❌ Divisão por zero no método de Newton (z(1) = {z[-1]:.2e})")
             break
         
         t = t - residuo / z[-1]
     
-    print(f"  ⚠️ Não convergiu após {max_iter} iterações")
+    print(f"  ⚠️ Não convergiu após {max_iter} iterações (Resíduo = {residuo:.2e})")
     return y, t
 
 def calcularCalorRadiacao(x_vec, y, epsilon):
@@ -766,7 +836,7 @@ def calcularCalorRadiacao(x_vec, y, epsilon):
     q_rad / (k_s * L * T_inf) = epsilon * integral[b(x) * (1 + y(x))^4 dx]
     """
     # Integrando: epsilon * b(x) * (1 + y(x))^4
-    integrando = epsilon * np.array([b(x) * (1 + y_val)**4 for x, y_val in zip(x_vec, y)])
+    integrando = epsilon * g(x_vec, y) # g(x,y) = b(x) * (1+y)^4
     
     # Método dos trapézios
     q_rad_trapezios = trapezoid(integrando, x_vec)
@@ -789,11 +859,13 @@ def tarefaNumerica3():
     
     # Parâmetros do vetor x
     n = int(1.0 / h)
+    if n % 2 != 0: n += 1 # Garantir n par para Simpson
     x_vec = np.linspace(0, 1, n + 1)
     
-    print("TAREFA NUMÉRICA 3\n")
+    print("\n" + "="*90)
+    print("TAREFA NUMÉRICA 3: ANÁLISE NÃO-LINEAR (ε=1) vs LINEAR (ε=0)")
+    print("="*90)
     print(f"\nParâmetros: f₀ = {f0}, h = {h}, α = {alpha}, β = {beta}")
-    print(f"Comparando casos: ε = 0 (linear) vs ε = 1 (não-linear)\n")
     
     resultados = {}
     
@@ -821,7 +893,12 @@ def tarefaNumerica3():
         
         # Caso NÃO-LINEAR (epsilon = 1)
         print(f"\n[NÃO-LINEAR] Resolvendo com método de disparo não-linear (ε = 1)...")
-        y_nao_linear, t_final = metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon=1.0)
+        # Chute inicial para t = y'(0)
+        # Usar a derivada da solução linear como chute inicial
+        t_chute = (y_linear[1] - y_linear[0]) / (x_vec[1] - x_vec[0])
+        print(f"  (Usando chute inicial t = {t_chute:.6f})")
+
+        y_nao_linear, t_final = metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon=1.0, t_inicial=t_chute)
         
         # Calcular fluxo de calor por convecção (não-linear)
         q_conv_trap_nl, q_conv_simp_nl = calcularFluxoCalor(x_vec, y_nao_linear, Nu)
@@ -834,20 +911,23 @@ def tarefaNumerica3():
             'q_conv_trap': q_conv_trap_nl,
             'q_conv_simp': q_conv_simp_nl,
             'q_rad_trap': q_rad_trap_nl,
-            'q_rad_simp': q_rad_simp_nl
+            'q_rad_simp': q_rad_simp_nl,
+            't_final': t_final
         }
         
         # Comparação
         print(f"\n{'─'*90}")
-        print(f"RESULTADOS PARA Nu = {Nu}")
+        print(f"RESULTADOS DE FLUXO DE CALOR PARA Nu = {Nu}")
         print(f"{'─'*90}")
-        print(f"\n{'Método':<20} {'q_conv (Trap)':<18} {'q_conv (Simp)':<18} {'q_rad (Trap)':<18} {'q_rad (Simp)':<18}")
+        print(f"{'Método':<20} {'q_conv (Trap)':<18} {'q_conv (Simp)':<18} {'q_rad (Trap)':<18} {'q_rad (Simp)':<18}")
         print("─"*90)
         print(f"{'Linear (ε=0)':<20} {q_conv_trap_lin:<18.8f} {q_conv_simp_lin:<18.8f} {0.0:<18.8f} {0.0:<18.8f}")
         print(f"{'Não-linear (ε=1)':<20} {q_conv_trap_nl:<18.8f} {q_conv_simp_nl:<18.8f} {q_rad_trap_nl:<18.8f} {q_rad_simp_nl:<18.8f}")
+        print("─"*90)
+        q_total_trap = q_conv_trap_nl + q_rad_trap_nl
+        q_total_simp = q_conv_simp_nl + q_rad_simp_nl
+        print(f"{'TOTAL (ε=1)':<20} {'-':<18} {'-':<18} {q_total_trap:<18.8f} {q_total_simp:<18.8f}")
         print(f"{'─'*90}")
-        print(f"{'Total (ε=1)':<20} {q_conv_trap_nl:<18.8f} {q_conv_simp_nl:<18.8f} "
-              f"{q_conv_trap_nl + q_rad_trap_nl:<18.8f} {q_conv_simp_nl + q_rad_simp_nl:<18.8f}")
     
     return resultados
 
@@ -860,10 +940,12 @@ def plotarComparacaoLinearNaoLinear(resultados):
     
     # Criar vetor x
     n = int(1.0 / h)
+    if n % 2 != 0: n += 1 
     x_vec = np.linspace(0, 1, n + 1)
     
     # Criar figura com 3 subplots
-    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
+    fig.suptitle('Tarefa 3: Comparação das Soluções y(x) [Linear vs Não-Linear]', fontsize=16)
     
     for idx, Nu in enumerate(Nu_valores):
         ax = axs[idx]
@@ -877,13 +959,15 @@ def plotarComparacaoLinearNaoLinear(resultados):
         ax.plot(x_vec, y_nao_linear, 'r--', linewidth=2, label='Não-linear (ε = 1)')
         
         ax.set_xlabel('x')
-        ax.set_ylabel('y(x)')
+        if idx == 0:
+            ax.set_ylabel('y(x)')
         ax.set_title(f'Nu = {Nu}, f₀ = 1')
         ax.legend()
         ax.grid(True, alpha=0.3)
     
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig('comparacao_linear_nao_linear.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'comparacao_linear_nao_linear.png' salvo.")
     plt.show()
 
 def plotarDiferencaLinearNaoLinear(resultados):
@@ -895,6 +979,7 @@ def plotarDiferencaLinearNaoLinear(resultados):
     
     # Criar vetor x
     n = int(1.0 / h)
+    if n % 2 != 0: n += 1
     x_vec = np.linspace(0, 1, n + 1)
     
     plt.figure(figsize=(10, 6))
@@ -909,13 +994,47 @@ def plotarDiferencaLinearNaoLinear(resultados):
     
     plt.xlabel('x')
     plt.ylabel('y_não_linear(x) - y_linear(x)')
-    plt.title('Diferença entre soluções não-linear e linear (f₀ = 1)')
+    plt.title('Tarefa 3: Diferença entre soluções Não-linear e Linear (f₀ = 1)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig('diferenca_linear_nao_linear.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'diferenca_linear_nao_linear.png' salvo.")
     plt.show()
 
 # =============================================================================
 # RESULTADOS EM VALORES E GRÁFICOS
 # =============================================================================
+
+if __name__ == "__main__":
+    
+    # 1. TESTE DAS TAREFAS COMPUTACIONAIS (MÉTODOS BÁSICOS)
+    teste_tarefas_computacionais()
+
+    # 2. RESULTADOS DA TAREFA NUMÉRICA 1 (Caso Linear, f0=0)
+    print("\n\n" + "="*90)
+    print("INICIANDO TAREFA NUMÉRICA 1")
+    print("="*90)
+    resultados_tn1 = casosTarefaNumerica1()
+    plotarGraficosConvergencia(resultados_tn1)
+    analisarFluxosCalor(resultados_tn1)
+
+    # 3. RESULTADOS DA TAREFA NUMÉRICA 2 (Caso Linear, f0 != 0)
+    print("\n\n" + "="*90)
+    print("INICIANDO TAREFA NUMÉRICA 2")
+    print("="*90)
+    resultados_tn2 = casosTarefaNumerica2()
+    plotarGraficosConvergencia2(resultados_tn2)
+    plotarSolucoesTarefa2(resultados_tn2)
+
+    # 4. RESULTADOS DA TAREFA NUMÉRICA 3 (Caso Não-Linear, f0 != 0)
+    print("\n\n" + "="*90)
+    print("INICIANDO TAREFA NUMÉRICA 3")
+    print("="*90)
+    resultados_tn3 = tarefaNumerica3()
+    plotarComparacaoLinearNaoLinear(resultados_tn3)
+    plotarDiferencaLinearNaoLinear(resultados_tn3)
+
+    print("\n\n" + "="*90)
+    print("TODAS AS TAREFAS FORAM EXECUTADAS E OS RESULTADOS FORAM GERADOS.")
+    print("="*90)
