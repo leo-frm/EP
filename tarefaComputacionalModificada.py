@@ -997,6 +997,7 @@ def plotarComparacaoLinearNaoLinear(resultados):
 def plotarDiferencaLinearNaoLinear(resultados):
     """
     Plota a diferença entre soluções lineares e não-lineares
+    CORRIGIDO: Usa escala logarítmica para visualizar diferenças pequenas
     """
     Nu_valores = [1, 16, 256]
     h = 0.0005
@@ -1014,18 +1015,46 @@ def plotarDiferencaLinearNaoLinear(resultados):
         y_nao_linear = resultados[Nu]['nao_linear']['y']
         diferenca = y_nao_linear - y_linear
         
-        plt.plot(x_vec, diferenca, linewidth=2, label=f'Nu = {Nu}')
+        # Imprimir estatísticas
+        print(f"\nNu = {Nu}")
+        print(f"  Diferença máxima: {np.max(np.abs(diferenca)):.6e}")
+        print(f"  Diferença em x=0.5: {diferenca[len(diferenca)//2]:.6e}")
+        
+        # Plotar em escala logarítmica (valor absoluto)
+        plt.semilogy(x_vec, np.abs(diferenca) + 1e-16, linewidth=2, label=f'Nu = {Nu}')
     
     plt.xlabel('x')
-    plt.ylabel('y_não_linear(x) - y_linear(x)')
-    plt.title('Tarefa 3: Diferença entre soluções Não-linear e Linear (f₀ = 1)')
+    plt.ylabel('|y_não_linear(x) - y_linear(x)|')
+    plt.title('Tarefa 3: Diferença Absoluta entre soluções (f₀ = 1, escala log)')
     plt.legend()
-    plt.grid(True, alpha=0.3)
+    plt.grid(True, alpha=0.3, which='both')
     plt.tight_layout()
     plt.savefig('diferenca_linear_nao_linear.png', dpi=300, bbox_inches='tight')
-    print("Gráfico 'diferenca_linear_nao_linear.png' salvo.")
+    print("\nGráfico 'diferenca_linear_nao_linear.png' salvo.")
     plt.show()
-
+    
+    # GRÁFICO ADICIONAL: Diferença relativa
+    plt.figure(figsize=(10, 6))
+    
+    for Nu in Nu_valores:
+        y_linear = resultados[Nu]['linear']['y']
+        y_nao_linear = resultados[Nu]['nao_linear']['y']
+        
+        # Diferença relativa (evitando divisão por zero)
+        diferenca_relativa = np.abs((y_nao_linear - y_linear) / (np.abs(y_linear) + 1e-16))
+        
+        plt.semilogy(x_vec, diferenca_relativa, linewidth=2, label=f'Nu = {Nu}')
+    
+    plt.xlabel('x')
+    plt.ylabel('Erro relativo: |y_nl - y_l| / |y_l|')
+    plt.title('Tarefa 3: Diferença Relativa entre soluções (f₀ = 1)')
+    plt.legend()
+    plt.grid(True, alpha=0.3, which='both')
+    plt.tight_layout()
+    plt.savefig('diferenca_relativa_linear_nao_linear.png', dpi=300, bbox_inches='tight')
+    print("Gráfico 'diferenca_relativa_linear_nao_linear.png' salvo.")
+    plt.show()
+    
 # =============================================================================
 # RESULTADOS EM VALORES E GRÁFICOS
 # =============================================================================
