@@ -97,13 +97,13 @@ def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         # Equação 1: y[k+1] - h*z[k+1] = y[k]
         # Equação 2: -(h*r/p)*y[k+1] + z[k+1] = z[k] + h*f/p
         
-        coef_y = -h * r_k1 / p_k1
-        
+        coef_y = h * r_k1 / p_k1  # ← deve ser POSITIVO
+
         A = np.array([[1.0, -h],
-                      [coef_y, 1.0]])
-        
+              [-coef_y, 1.0]])  # ← negativo vai aqui na matriz
+
         b = np.array([y[k],
-                      z[k] + h * f_k1 / p_k1])
+              z[k] - h * f_k1 / p_k1])  # ← também muda o sinal aqui
         
         # Verificar determinante antes de resolver
         det = np.linalg.det(A)
@@ -185,13 +185,13 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         dz_k = (r_k * y[k] - f_k) / p_k
         
         # Sistema: A * [y[k+1], z[k+1]]^T = b
-        coef_y = -h/2 * r_k1 / p_k1
-        
+        coef_y = h/2 * r_k1 / p_k1  # ← positivo
+
         A = np.array([[1.0, -h/2],
-                      [coef_y, 1.0]])
-        
+              [-coef_y, 1.0]])  # ← negativo na matriz
+
         b = np.array([y[k] + (h/2) * z[k],
-                      z[k] + (h/2) * dz_k + (h/2) * f_k1 / p_k1])
+              z[k] + (h/2) * dz_k - (h/2) * f_k1 / p_k1])
         
         # Verificar determinante antes de resolver
         det = np.linalg.det(A)
