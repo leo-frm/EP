@@ -350,7 +350,7 @@ def rk4_linearizado(x_vec, z0, dz0, y_vec, Nu=1.0, epsilon=1.0):
     return z
 
 # =============================================================================
-# TESTE (exemplo de uso)
+# RESULTADO TAREFAS COMPUTACIONAIS 1 e 2
 # =============================================================================
 
 def teste_tarefas_computacionais():
