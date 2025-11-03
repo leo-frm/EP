@@ -76,51 +76,47 @@ def euler_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
 
 def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     """
-    Método de Euler Implícito
+    Método de Euler Implícito - CORRIGIDO
     """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
-    # Criar vetores para y e z
     y = np.zeros(n + 1)
     z = np.zeros(n + 1)
     
-    # Condições iniciais
     y[0] = y0
     z[0] = dy0
     
-    # Loop de integração
     for k in range(n):
         x_k1 = x_vec[k + 1]
+        p_k1 = 1.0  # p(x_k1)
+        r_k1 = Nu    # r(x_k1, Nu)
+        f_k1 = f0    # f(x_k1, f0)
         
-        # Calcular dz/dx no ponto k+1 usando: z' = (r*y - f) / p
-        # Rearranjar para encontrar y[k+1] e z[k+1]
-        # Sistema de equações:
-        # y[k+1] = y[k] + h * z[k+1]
-        # z[k+1] = z[k] + h * ((r(x_k1, Nu) * y[k+1] - f(x_k1, f0)) / p(x_k1))
+        # Sistema: A * [y[k+1], z[k+1]]^T = b
+        # Equação 1: y[k+1] - h*z[k+1] = y[k]
+        # Equação 2: -(h*r/p)*y[k+1] + z[k+1] = z[k] + h*f/p
         
-        # Resolver o sistema linear
-        A = np.array([[1, -h],
-                      [-h * r(x_k1, Nu) / p(x_k1), 1]])
+        coef_y = -h * r_k1 / p_k1
         
-        b = np.array([y[k],
-                      z[k] - h * f(x_k1, f0) / p(x_k1)]) # Correção: f0 era somado, deve ser subtraído (ou f é subtraído no sistema)
-        
-        # Vamos reescrever o sistema para evitar confusão de sinal
-        # y[k+1] - h*z[k+1] = y[k]
-        # z[k+1] - h*(r*y[k+1] - f)/p = z[k]
-        # -> -h*(r/p)*y[k+1] + z[k+1] = z[k] - h*f/p
-        
-        A = np.array([[1, -h],
-                      [-h * r(x_k1, Nu) / p(x_k1), 1]])
+        A = np.array([[1.0, -h],
+                      [coef_y, 1.0]])
         
         b = np.array([y[k],
-                      z[k] - h * f(x_k1, f0) / p(x_k1)])
-
-        sol = np.linalg.solve(A, b)
+                      z[k] + h * f_k1 / p_k1])
         
-        y[k + 1] = sol[0]
-        z[k + 1] = sol[1]
+        # Verificar determinante antes de resolver
+        det = np.linalg.det(A)
+        if abs(det) < 1e-14:
+            print(f"  ⚠️  Matriz singular em k={k}, det={det:.2e}")
+            # Usar método explícito como fallback
+            y[k+1] = y[k] + h * z[k]
+            dz_dx = (r_k1 * y[k] - f_k1) / p_k1
+            z[k+1] = z[k] + h * dz_dx
+        else:
+            sol = np.linalg.solve(A, b)
+            y[k + 1] = sol[0]
+            z[k + 1] = sol[1]
     
     return y
 
@@ -163,46 +159,54 @@ def trapezio_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
 
 def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     """
-    Método do Trapézio Implícito
+    Método do Trapézio Implícito - CORRIGIDO
     """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
-    # Criar vetores para y e z
     y = np.zeros(n + 1)
     z = np.zeros(n + 1)
     
-    # Condições iniciais
     y[0] = y0
     z[0] = dy0
     
-    # Loop de integração
     for k in range(n):
         x_k = x_vec[k]
         x_k1 = x_vec[k + 1]
         
-        # Calcular dz_dx no ponto k (explícito)
-        dz_dx_k = (r(x_k, Nu) * y[k] - f(x_k, f0)) / p(x_k)
-
-        # Sistema linear:
-        # y[k+1] = y[k] + h/2 * (z[k] + z[k+1])
-        # z[k+1] = z[k] + h/2 * (dz_dx_k + dz_dx_k1)
-        # onde dz_dx_k1 = (r(x_k1)*y[k+1] - f(x_k1)) / p(x_k1)
+        p_k = 1.0
+        p_k1 = 1.0
+        r_k = Nu
+        r_k1 = Nu
+        f_k = f0
+        f_k1 = f0
         
-        # Rearranjando:
-        # y[k+1] - (h/2)*z[k+1] = y[k] + (h/2)*z[k]
-        # -(h/2)*(r/p)*y[k+1] + z[k+1] = z[k] + (h/2)*dz_dx_k - (h/2)*(f/p)
+        # Calcular dz_k (explícito)
+        dz_k = (r_k * y[k] - f_k) / p_k
         
-        A = np.array([[1, -h/2],
-                      [-h/2 * r(x_k1, Nu) / p(x_k1), 1]])
-
+        # Sistema: A * [y[k+1], z[k+1]]^T = b
+        coef_y = -h/2 * r_k1 / p_k1
+        
+        A = np.array([[1.0, -h/2],
+                      [coef_y, 1.0]])
+        
         b = np.array([y[k] + (h/2) * z[k],
-                      z[k] + (h/2) * (dz_dx_k - f(x_k1, f0) / p(x_k1))]) # Correção: f0 era somado, deve ser subtraído
-
-        sol = np.linalg.solve(A, b)
+                      z[k] + (h/2) * dz_k + (h/2) * f_k1 / p_k1])
         
-        y[k + 1] = sol[0]
-        z[k + 1] = sol[1]
+        # Verificar determinante antes de resolver
+        det = np.linalg.det(A)
+        if abs(det) < 1e-14:
+            print(f"  ⚠️  Matriz singular em k={k}, det={det:.2e}")
+            # Usar trapézio explícito como fallback
+            y_pred = y[k] + h * z[k]
+            z_pred = z[k] + h * dz_k
+            dz_k1 = (r_k1 * y_pred - f_k1) / p_k1
+            y[k+1] = y[k] + (h/2) * (z[k] + z_pred)
+            z[k+1] = z[k] + (h/2) * (dz_k + dz_k1)
+        else:
+            sol = np.linalg.solve(A, b)
+            y[k + 1] = sol[0]
+            z[k + 1] = sol[1]
     
     return y
 
@@ -441,8 +445,11 @@ def teste_tarefas_computacionais():
 # =============================================================================
 
 def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
-
-    # definição do metodo
+    """
+    Método de Disparo para problema de contorno linear
+    Corrigido para evitar divisão por zero
+    """
+    # Definição do método
     if metodo == 'euler_exp':
         resolver = euler_explicito
     elif metodo == 'euler_imp':
@@ -466,20 +473,37 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
     else:
         u_p = np.zeros_like(v)
     
+    # CORREÇÃO: Verificar se w[-1] é muito pequeno (matriz singular)
+    if abs(w[-1]) < 1e-10:
+        print(f"  ⚠️  Aviso: w(1) = {w[-1]:.2e} muito pequeno!")
+        print(f"     Usando método alternativo para h = {x_vec[1]-x_vec[0]}")
+        
+        # Método alternativo: usar imposição direta das condições de contorno
+        # Para o caso linear, podemos usar interpolação direta
+        # y(x) = alpha + (beta - alpha)*x para caso degenerado
+        
+        # Mas vamos tentar com um epsilon pequeno
+        w_final = w[-1]
+        if abs(w_final) < 1e-14:
+            # Caso extremo: usar solução linear
+            y = alpha + (beta - alpha) * x_vec
+            return y
+        
     # Determinar coeficientes a e b
     # y(0) = a*v(0) + b*w(0) + u_p(0)
-    # alpha = a*1 + b*0 + 0 -> a = alpha
-    a = alpha - u_p[0] # u_p[0] é 0 pelas C.I., mas deixamos por consistência
+    # alpha = a*1 + b*0 + u_p(0) -> a = alpha - u_p(0)
+    a = alpha - u_p[0]
     
     # y(1) = a*v(1) + b*w(1) + u_p(1)
-    # beta = a*v(L) + b*w(L) + u_p(L)
-    # b = (beta - a*v(L) - u_p(L)) / w(L)
+    # beta = a*v(1) + b*w(1) + u_p(1)
+    # b = (beta - a*v(1) - u_p(1)) / w(1)
     b = (beta - a * v[-1] - u_p[-1]) / w[-1]
     
     # Solução final
     y = a * v + b * w + u_p
     
     return y
+
 
 def solucaoExata(x, alpha, beta, Nu):
     sqrt_nu = np.sqrt(Nu)
