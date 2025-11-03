@@ -883,7 +883,7 @@ def tarefaNumerica3():
     
     # Parâmetros do vetor x
     n = int(1.0 / h)
-    if n % 2 != 0: n += 1 # Garantir n par para Simpson
+    if n % 2 != 0: n += 1 
     x_vec = np.linspace(0, 1, n + 1)
     
     print("\n" + "="*90)
@@ -917,12 +917,19 @@ def tarefaNumerica3():
         
         # Caso NÃO-LINEAR (epsilon = 1)
         print(f"\n[NÃO-LINEAR] Resolvendo com método de disparo não-linear (ε = 1)...")
-        # Chute inicial para t = y'(0)
-        # Usar a derivada da solução linear como chute inicial
-        t_chute = (y_linear[1] - y_linear[0]) / (x_vec[1] - x_vec[0])
+        
+        # CORREÇÃO: Usar chute inicial mais conservador
+        # Começar com chute próximo de zero para evitar explosão
+        t_chute = 0.0
         print(f"  (Usando chute inicial t = {t_chute:.6f})")
 
-        y_nao_linear, t_final = metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon=1.0, t_inicial=t_chute)
+        y_nao_linear, t_final = metodoDisparoNaoLinear(
+            x_vec, alpha, beta, Nu, f0, 
+            epsilon=1.0, 
+            t_inicial=t_chute,
+            max_iter=100,  # Aumentar iterações
+            tol=1e-6       # Tolerância menos restritiva
+        )
         
         # Calcular fluxo de calor por convecção (não-linear)
         q_conv_trap_nl, q_conv_simp_nl = calcularFluxoCalor(x_vec, y_nao_linear, Nu)
