@@ -8,36 +8,21 @@ from scipy.integrate import trapezoid
 # =============================================================================
 
 def p(x):
-    """Coeficiente p(x) - assumimos constante = 1"""
     return 1.0
 
 def r(x, Nu):
-    """Coeficiente r(x) - número de Nusselt (constante)"""
     return Nu
 
 def f(x, f0):
-    """Termo fonte f(x) - constante"""
     return f0
 
 def b(x):
-    """
-    Coeficiente b(x) relacionado à radiação
-    Para simplificar, assumimos b(x) = 1 (constante)
-    """
     return 1.0
 
 def g(x, y):
-    """
-    Função g(x,y) - termo de radiação não-linear
-    g(x, y) = b(x) * (1 + y)^4
-    """
     return b(x) * (1 + y)**4
 
 def dg_dy(x, y):
-    """
-    Derivada parcial de g em relação a y
-    dg/dy = b(x) * 4 * (1 + y)^3
-    """
     return b(x) * 4 * (1 + y)**3
 
 # =============================================================================
@@ -45,21 +30,15 @@ def dg_dy(x, y):
 # =============================================================================
 
 def euler_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
-    """
-    Método de Euler Explícito
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
-    # Criar vetores para y e z
     y = np.zeros(n + 1)
     z = np.zeros(n + 1)
-    
-    # Condições iniciais
+
     y[0] = y0
     z[0] = dy0
-    
-    # Loop de integração
+
     for k in range(n):
         x_k = x_vec[k]
         
@@ -75,9 +54,6 @@ def euler_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     return y
 
 def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
-    """
-    Método de Euler Implícito - CORRIGIDO
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
@@ -97,19 +73,19 @@ def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         # Equação 1: y[k+1] - h*z[k+1] = y[k]
         # Equação 2: -(h*r/p)*y[k+1] + z[k+1] = z[k] + h*f/p
         
-        coef_y = h * r_k1 / p_k1  # ← deve ser POSITIVO
+        coef_y = h * r_k1 / p_k1  
 
         A = np.array([[1.0, -h],
-              [-coef_y, 1.0]])  # ← negativo vai aqui na matriz
+              [-coef_y, 1.0]])  
 
         b = np.array([y[k],
-              z[k] - h * f_k1 / p_k1])  # ← também muda o sinal aqui
-        
+              z[k] - h * f_k1 / p_k1]) 
+                
         # Verificar determinante antes de resolver
         det = np.linalg.det(A)
         if abs(det) < 1e-14:
-            print(f"  ⚠️  Matriz singular em k={k}, det={det:.2e}")
-            # Usar método explícito como fallback
+            print(f"Matriz singular em k={k}, det={det:.2e}")
+
             y[k+1] = y[k] + h * z[k]
             dz_dx = (r_k1 * y[k] - f_k1) / p_k1
             z[k+1] = z[k] + h * dz_dx
@@ -122,9 +98,6 @@ def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
 
 
 def trapezio_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
-    """
-    Método do Trapézio Explícito
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
@@ -158,9 +131,6 @@ def trapezio_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     return y
 
 def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
-    """
-    Método do Trapézio Implícito - CORRIGIDO
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
@@ -185,10 +155,10 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         dz_k = (r_k * y[k] - f_k) / p_k
         
         # Sistema: A * [y[k+1], z[k+1]]^T = b
-        coef_y = h/2 * r_k1 / p_k1  # ← positivo
+        coef_y = h/2 * r_k1 / p_k1 
 
         A = np.array([[1.0, -h/2],
-              [-coef_y, 1.0]])  # ← negativo na matriz
+              [-coef_y, 1.0]])  
 
         b = np.array([y[k] + (h/2) * z[k],
               z[k] + (h/2) * dz_k - (h/2) * f_k1 / p_k1])
@@ -197,7 +167,7 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         det = np.linalg.det(A)
         if abs(det) < 1e-14:
             print(f"  ⚠️  Matriz singular em k={k}, det={det:.2e}")
-            # Usar trapézio explícito como fallback
+
             y_pred = y[k] + h * z[k]
             z_pred = z[k] + h * dz_k
             dz_k1 = (r_k1 * y_pred - f_k1) / p_k1
@@ -211,9 +181,6 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     return y
 
 def runge_kutta_4(x_vec, y0, dy0, Nu=1.0, f0=0.0):
-    """
-    Método de Runge-Kutta de 4ª ordem
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
@@ -255,9 +222,6 @@ def runge_kutta_4(x_vec, y0, dy0, Nu=1.0, f0=0.0):
 # =============================================================================
 
 def rk4_nao_linear(x_vec, y0, dy0, Nu=1.0, f0=0.0, epsilon=1.0):
-    """
-    Método de Runge-Kutta de 4ª ordem para problemas não lineares
-    """
     n = len(x_vec) - 1
     h = x_vec[1] - x_vec[0]
     
@@ -358,9 +322,6 @@ def rk4_linearizado(x_vec, z0, dz0, y_vec, Nu=1.0, epsilon=1.0):
 # =============================================================================
 
 def teste_tarefas_computacionais():
-    """
-    Função para testar os métodos numéricos básicos (Tarefas Computacionais 1 e 2)
-    """
     print("="*70)
     print("TESTANDO OS MÉTODOS NUMÉRICOS (TAREFAS COMPUTACIONAIS 1 E 2)")
     print("="*70)
@@ -410,13 +371,13 @@ def teste_tarefas_computacionais():
     print("MÉTODOS NÃO-LINEARES (Tarefa Computacional 2)")
     print("-"*70)
     
-    # Teste 1: epsilon = 0 (deve dar igual ao RK4 linear)
+    # Teste 1: epsilon = 0 
     epsilon = 0.0
     y_nl_0 = rk4_nao_linear(x_vec, y0, dy0, Nu, f0, epsilon)
     print(f"RK4 Não-Linear (ε=0): y(0.5) = {y_nl_0[n//2]:.6f}  |  y(1) = {y_nl_0[-1]:.6f}")
     print(f"  → Diferença com RK4 linear: {abs(y_nl_0[-1] - y_rk4[-1]):.2e}")
     
-    # Teste 2: epsilon = 1 (problema não-linear completo)
+    # Teste 2: epsilon = 1
     epsilon = 1.0
     y_nl_1 = rk4_nao_linear(x_vec, y0, dy0, Nu, f0, epsilon)
     print(f"RK4 Não-Linear (ε=1): y(0.5) = {y_nl_1[n//2]:.6f}  |  y(1) = {y_nl_1[-1]:.6f}")
@@ -445,10 +406,6 @@ def teste_tarefas_computacionais():
 # =============================================================================
 
 def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
-    """
-    Método de Disparo para problema de contorno linear
-    Corrigido para evitar divisão por zero
-    """
     # Definição do método
     if metodo == 'euler_exp':
         resolver = euler_explicito
@@ -472,15 +429,9 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
         u_p = resolver(x_vec, 0.0, 0.0, Nu, f0)
     else:
         u_p = np.zeros_like(v)
-    
-    # CORREÇÃO: Verificar se w[-1] é muito pequeno (matriz singular)
     if abs(w[-1]) < 1e-10:
-        print(f"  ⚠️  Aviso: w(1) = {w[-1]:.2e} muito pequeno!")
-        print(f"     Usando método alternativo para h = {x_vec[1]-x_vec[0]}")
-        
-        # Método alternativo: usar imposição direta das condições de contorno
-        # Para o caso linear, podemos usar interpolação direta
-        # y(x) = alpha + (beta - alpha)*x para caso degenerado
+        print(f"Aviso: w(1) = {w[-1]:.2e} muito pequeno\n")
+        print(f"Usando método alternativo para h = {x_vec[1]-x_vec[0]}")
         
         # Mas vamos tentar com um epsilon pequeno
         w_final = w[-1]
@@ -508,23 +459,17 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
 def solucaoExata(x, alpha, beta, Nu):
     sqrt_nu = np.sqrt(Nu)
     
-    # Calcular exponenciais
     exp_neg = np.exp(-sqrt_nu)
     exp_pos = np.exp(sqrt_nu)
     
-    # Denominador
-    den = exp_pos - exp_neg # sinh(sqrt_nu) * 2
+    den = exp_pos - exp_neg
     if abs(den) < 1e-14:
-        # Caso Nu -> 0, usar interpolação linear
         return alpha + (beta - alpha) * x
 
-    # Resolver para B
     B = (beta - alpha * exp_neg) / den
-    
-    # Resolver para A
+
     A = alpha - B
-    
-    # Calcular y_ex(x)
+
     y_ex = A * np.exp(-sqrt_nu * x) + B * np.exp(sqrt_nu * x)
     
     return y_ex
@@ -534,28 +479,23 @@ def calcularErro(y_numerica, y_exata):
     return erroQuadratico
 
 def tarefaNumerica1(h, Nu, metodo, alpha=0.1, beta=0.5, f0=0.0):
-    # Parâmetros do teste
+
     n = int(1.0 / h)
     x_vec = np.linspace(0, 1, n + 1)
 
-    # Solução exata
     y_exata = solucaoExata(x_vec, alpha, beta, Nu)
-    
-    # Solução numérica via método de disparo
+  
     y_numerica = metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo)
 
-    # Cálculo do erro
     erro = calcularErro(y_numerica, y_exata)
 
     return y_numerica, y_exata, erro
 
 def casosTarefaNumerica1():
-    # Parâmetros para teste
     Nu_valores = [1, 16, 256]
     h_valores = [0.5, 0.05, 0.005, 0.0005]
     metodos = ['euler_exp', 'euler_imp', 'trap_exp', 'trap_imp', 'rk4']
-    
-    # Armazenar todos os resultados
+
     resultados = {}
     
     print("\nExecutando Tarefa Numérica 1 (Cálculo de Erros)...")
@@ -587,24 +527,20 @@ def plotarGraficosConvergencia(resultados):
         'rk4': 'Runge-Kutta 4'
     }
     
-    # Criar uma figura com 3 subplots (um para cada Nu)
     fig, axs = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
     fig.suptitle('Tarefa 1: Análise de Convergência (Erro RMS vs h)', fontsize=16)
     
     for idx, Nu in enumerate(Nu_valores):
         ax = axs[idx]
-        
-        # Para cada método, coletar erros e plotar
+
         for metodo in metodos:
             erros = []
             for h in h_valores:
                 erro = resultados[Nu][h][metodo]['erro']
                 erros.append(erro)
-            
-            # Plotar em escala log-log
+
             ax.loglog(h_valores, erros, 'o-', label=nomes_metodos[metodo])
-        
-        # Plotar linhas de referência para ordens
+
         if 'rk4' in metodos:
             erros_rk4 = [resultados[Nu][h]['rk4']['erro'] for h in h_valores]
             h_ref = np.array(h_valores)
@@ -628,13 +564,10 @@ def plotarGraficosConvergencia(resultados):
     plt.show()
 
 def calcularFluxoCalor(x_vec, y, Nu):
-    # Integrando
-    integrando = Nu * y  # r(x) * y(x), com r(x) = Nu
+    integrando = Nu * y  
     
-    # Método dos trapézios
     fluxo_trapezios = trapezoid(integrando, x_vec)
-    
-    # Método de Simpson
+
     fluxo_simpson = simpson_rule(integrando, x=x_vec)
     
     return fluxo_trapezios, fluxo_simpson
@@ -655,22 +588,17 @@ def analisarFluxosCalor(resultados):
         print("─"*90)
         
         for h in h_valores:
-            # Criar vetor x
+ 
             n = int(1.0 / h)
-            if n % 2 != 0: n += 1 # Garantir n par para Simpson
+            if n % 2 != 0: n += 1 
             x_vec = np.linspace(0, 1, n + 1)
-            
-            # Pegar solução numérica (RK4) e exata
-            # Recalcular para garantir n par
+
             y_numerica, y_exata, _ = tarefaNumerica1(x_vec[1]-x_vec[0], Nu, 'rk4')
-            
-            # Calcular fluxos da solução numérica
+
             fluxo_trap_num, fluxo_simp_num = calcularFluxoCalor(x_vec, y_numerica, Nu)
-            
-            # Calcular fluxos da solução exata
+
             fluxo_trap_ex, fluxo_simp_ex = calcularFluxoCalor(x_vec, y_exata, Nu)
-            
-            # Imprimir resultados
+
             print(f"{h:<10.4f} {fluxo_trap_num:<15.8f} {fluxo_simp_num:<15.8f} {fluxo_trap_ex:<15.8f} {fluxo_simp_ex:<15.8f}")
         
         print("─"*90)
@@ -682,52 +610,40 @@ def analisarFluxosCalor(resultados):
 def solucaoExataAfim(x, alpha, beta, Nu, f0):
     sqrt_nu = np.sqrt(Nu)
 
-    # Solução particular
     y_p = f0 / Nu
 
-    # Ajustar condições
     alpha_h = alpha - y_p
     beta_h = beta - y_p
     
-    # Calcular exponenciais
     exp_neg = np.exp(-sqrt_nu)
     exp_pos = np.exp(sqrt_nu)
 
-    # Denominador
     den = exp_pos - exp_neg
     if abs(den) < 1e-14:
-        # Caso Nu -> 0, usar interpolação linear
         return (alpha_h + (beta_h - alpha_h) * x) + y_p
-    
-    # Resolver para B
+
     B = (beta_h - alpha_h * exp_neg) / den
     
-    # Resolver para A
     A = alpha_h - B
-    
-    # Calcular y_ex(x)
+
     y_ex = A * np.exp(-sqrt_nu * x) + B * np.exp(sqrt_nu * x) + y_p
     
     return y_ex
 
 def tarefaNumerica2(h, Nu, metodo, f0, alpha=0.1, beta=0.5):
-    # Parâmetros do teste
+
     n = int(1.0 / h)
     x_vec = np.linspace(0, 1, n + 1)
 
-    # Solução exata
     y_exata = solucaoExataAfim(x_vec, alpha, beta, Nu, f0)
     
-    # Solução numérica via método de disparo
     y_numerica = metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo)
 
-    # Cálculo do erro
     erro = calcularErro(y_numerica, y_exata)
 
     return y_numerica, y_exata, erro
 
 def casosTarefaNumerica2():
-    # Parâmetros para teste
     Nu = 1 
     f0_valores = [0, 1, 2, 4]
     h_valores = [0.5, 0.05, 0.005, 0.0005]
@@ -765,8 +681,7 @@ def plotarGraficosConvergencia2(resultados):
         'trap_imp': 'Trapézio Implícito',
         'rk4': 'Runge-Kutta 4'
     }
-    
-    # Criar uma figura com subplots (um para cada f0)
+
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharey=True)
     fig.suptitle('Tarefa 2: Análise de Convergência (Erro RMS vs h) para Nu = 1', fontsize=16)
     axs = axs.flatten()
@@ -774,14 +689,12 @@ def plotarGraficosConvergencia2(resultados):
     for idx, f0 in enumerate(f0_valores):
         ax = axs[idx]
         
-        # Para cada método, coletar erros e plotar
         for metodo in metodos:
             erros = []
             for h in h_valores:
                 erro = resultados[f0][h][metodo]['erro']
                 erros.append(erro)
-            
-            # Plotar em escala log-log
+        
             ax.loglog(h_valores, erros, 'o-', label=nomes_metodos[metodo])
         
         ax.set_xlabel('h (tamanho do passo)')
@@ -801,14 +714,12 @@ def plotarSolucoesTarefa2(resultados):
     f0_valores = [0, 1, 2, 4]
     h = 0.0005
     
-    # Criar vetor x
     n = int(1.0 / h)
     x_vec = np.linspace(0, 1, n + 1)
     
     plt.figure(figsize=(10, 6))
     
     for f0 in f0_valores:
-        # Pegar solução numérica (RK4)
         y = resultados[f0][h]['rk4']['y_numerica']
         plt.plot(x_vec, y, label=f'f₀ = {f0}', linewidth=2)
     
@@ -828,23 +739,19 @@ def plotarSolucoesTarefa2(resultados):
 
 def metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon, t_inicial=0.0, max_iter=50, tol=1e-8):
     t = t_inicial
-    y = np.zeros_like(x_vec) # Inicializar y
+    y = np.zeros_like(x_vec)
     
     for iteracao in range(max_iter):
-        # Resolver problema não-linear com y'(0) = t
         y = rk4_nao_linear(x_vec, alpha, t, Nu, f0, epsilon)
-        
-        # Verificar convergência: y(1) deve ser igual a beta
+   
         residuo = y[-1] - beta
         
         if abs(residuo) < tol:
             print(f"  ✅ Convergiu em {iteracao+1} iterações (t = {t:.6f})")
             return y, t
         
-        # Resolver problema linearizado para calcular dy/dt = z
         z = rk4_linearizado(x_vec, 0.0, 1.0, y, Nu, epsilon)
         
-        # Atualização de Newton: t_novo = t - residuo / z(1)
         if abs(z[-1]) < 1e-14:
             print(f"  ❌ Divisão por zero no método de Newton (z(1) = {z[-1]:.2e})")
             break
@@ -855,33 +762,24 @@ def metodoDisparoNaoLinear(x_vec, alpha, beta, Nu, f0, epsilon, t_inicial=0.0, m
     return y, t
 
 def calcularCalorRadiacao(x_vec, y, epsilon):
-    """
-    Calcula o calor transferido por radiação
-    q_rad / (k_s * L * T_inf) = epsilon * integral[b(x) * (1 + y(x))^4 dx]
-    """
+
     # Integrando: epsilon * b(x) * (1 + y(x))^4
     integrando = epsilon * g(x_vec, y) # g(x,y) = b(x) * (1+y)^4
-    
-    # Método dos trapézios
+
     q_rad_trapezios = trapezoid(integrando, x_vec)
-    
-    # Método de Simpson
+
     q_rad_simpson = simpson_rule(integrando, x=x_vec)
     
     return q_rad_trapezios, q_rad_simpson
 
 def tarefaNumerica3():
-    """
-    Tarefa Numérica 3: Caso não-linear (epsilon = 1, f0 = 1)
-    Comparar com caso linear (epsilon = 0)
-    """
+
     Nu_valores = [1, 16, 256]
     f0 = 1
     h = 0.0005
     alpha = 0.1
     beta = 0.5
-    
-    # Parâmetros do vetor x
+
     n = int(1.0 / h)
     if n % 2 != 0: n += 1 
     x_vec = np.linspace(0, 1, n + 1)
@@ -899,12 +797,10 @@ def tarefaNumerica3():
         print(f"{'─'*90}")
         
         resultados[Nu] = {}
-        
-        # Caso LINEAR (epsilon = 0)
+
         print(f"\n[LINEAR] Resolvendo com método de disparo (ε = 0)...")
         y_linear = metodoDisparo(x_vec, alpha, beta, Nu, f0, 'rk4')
-        
-        # Calcular fluxo de calor por convecção (linear)
+
         q_conv_trap_lin, q_conv_simp_lin = calcularFluxoCalor(x_vec, y_linear, Nu)
         
         resultados[Nu]['linear'] = {
@@ -914,12 +810,9 @@ def tarefaNumerica3():
             'q_rad_trap': 0.0,
             'q_rad_simp': 0.0
         }
-        
-        # Caso NÃO-LINEAR (epsilon = 1)
+
         print(f"\n[NÃO-LINEAR] Resolvendo com método de disparo não-linear (ε = 1)...")
-        
-        # CORREÇÃO: Usar chute inicial mais conservador
-        # Começar com chute próximo de zero para evitar explosão
+
         t_chute = 0.0
         print(f"  (Usando chute inicial t = {t_chute:.6f})")
 
@@ -927,14 +820,12 @@ def tarefaNumerica3():
             x_vec, alpha, beta, Nu, f0, 
             epsilon=1.0, 
             t_inicial=t_chute,
-            max_iter=100,  # Aumentar iterações
-            tol=1e-6       # Tolerância menos restritiva
+            max_iter=100,  
+            tol=1e-6       
         )
-        
-        # Calcular fluxo de calor por convecção (não-linear)
+
         q_conv_trap_nl, q_conv_simp_nl = calcularFluxoCalor(x_vec, y_nao_linear, Nu)
-        
-        # Calcular fluxo de calor por radiação (não-linear)
+
         q_rad_trap_nl, q_rad_simp_nl = calcularCalorRadiacao(x_vec, y_nao_linear, epsilon=1.0)
         
         resultados[Nu]['nao_linear'] = {
@@ -946,7 +837,6 @@ def tarefaNumerica3():
             't_final': t_final
         }
         
-        # Comparação
         print(f"\n{'─'*90}")
         print(f"RESULTADOS DE FLUXO DE CALOR PARA Nu = {Nu}")
         print(f"{'─'*90}")
@@ -963,29 +853,23 @@ def tarefaNumerica3():
     return resultados
 
 def plotarComparacaoLinearNaoLinear(resultados):
-    """
-    Plota gráficos comparando soluções lineares e não-lineares
-    """
+
     Nu_valores = [1, 16, 256]
     h = 0.0005
-    
-    # Criar vetor x
+
     n = int(1.0 / h)
     if n % 2 != 0: n += 1 
     x_vec = np.linspace(0, 1, n + 1)
-    
-    # Criar figura com 3 subplots
+
     fig, axs = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
     fig.suptitle('Tarefa 3: Comparação das Soluções y(x) [Linear vs Não-Linear]', fontsize=16)
     
     for idx, Nu in enumerate(Nu_valores):
         ax = axs[idx]
-        
-        # Plotar solução linear
+
         y_linear = resultados[Nu]['linear']['y']
         ax.plot(x_vec, y_linear, 'b-', linewidth=2, label='Linear (ε = 0)')
-        
-        # Plotar solução não-linear
+
         y_nao_linear = resultados[Nu]['nao_linear']['y']
         ax.plot(x_vec, y_nao_linear, 'r--', linewidth=2, label='Não-linear (ε = 1)')
         
@@ -1001,66 +885,59 @@ def plotarComparacaoLinearNaoLinear(resultados):
     print("Gráfico 'comparacao_linear_nao_linear.png' salvo.")
     plt.show()
 
-def plotarDiferencaLinearNaoLinear(resultados):
-    """
-    Plota a diferença entre soluções lineares e não-lineares
-    CORRIGIDO: Usa escala logarítmica para visualizar diferenças pequenas
-    """
-    Nu_valores = [1, 16, 256]
-    h = 0.0005
+#def plotarDiferencaLinearNaoLinear(resultados):
+
+    # Nu_valores = [1, 16, 256]
+    # h = 0.0005
     
-    # Criar vetor x
-    n = int(1.0 / h)
-    if n % 2 != 0: n += 1
-    x_vec = np.linspace(0, 1, n + 1)
+    # n = int(1.0 / h)
+    # if n % 2 != 0: n += 1
+    # x_vec = np.linspace(0, 1, n + 1)
     
-    plt.figure(figsize=(10, 6))
+    # plt.figure(figsize=(10, 6))
     
-    for Nu in Nu_valores:
-        # Calcular diferença
-        y_linear = resultados[Nu]['linear']['y']
-        y_nao_linear = resultados[Nu]['nao_linear']['y']
-        diferenca = y_nao_linear - y_linear
+    # for Nu in Nu_valores:
+
+    #     y_linear = resultados[Nu]['linear']['y']
+    #     y_nao_linear = resultados[Nu]['nao_linear']['y']
+    #     diferenca = y_nao_linear - y_linear
+
+    #     print(f"\nNu = {Nu}")
+    #     print(f"  Diferença máxima: {np.max(np.abs(diferenca)):.6e}")
+    #     print(f"  Diferença em x=0.5: {diferenca[len(diferenca)//2]:.6e}")
         
-        # Imprimir estatísticas
-        print(f"\nNu = {Nu}")
-        print(f"  Diferença máxima: {np.max(np.abs(diferenca)):.6e}")
-        print(f"  Diferença em x=0.5: {diferenca[len(diferenca)//2]:.6e}")
+    #     plt.semilogy(x_vec, np.abs(diferenca) + 1e-16, linewidth=2, label=f'Nu = {Nu}')
+    
+    # plt.xlabel('x')
+    # plt.ylabel('|y_não_linear(x) - y_linear(x)|')
+    # plt.title('Tarefa 3: Diferença Absoluta entre soluções (f₀ = 1, escala log)')
+    # plt.legend()
+    # plt.grid(True, alpha=0.3, which='both')
+    # plt.tight_layout()
+    # plt.savefig('diferenca_linear_nao_linear.png', dpi=300, bbox_inches='tight')
+    # print("\nGráfico 'diferenca_linear_nao_linear.png' salvo.")
+    # plt.show()
+    
+    # # GRÁFICO ADICIONAL: Diferença relativa
+    # plt.figure(figsize=(10, 6))
+    
+    # for Nu in Nu_valores:
+    #     y_linear = resultados[Nu]['linear']['y']
+    #     y_nao_linear = resultados[Nu]['nao_linear']['y']
         
-        # Plotar em escala logarítmica (valor absoluto)
-        plt.semilogy(x_vec, np.abs(diferenca) + 1e-16, linewidth=2, label=f'Nu = {Nu}')
-    
-    plt.xlabel('x')
-    plt.ylabel('|y_não_linear(x) - y_linear(x)|')
-    plt.title('Tarefa 3: Diferença Absoluta entre soluções (f₀ = 1, escala log)')
-    plt.legend()
-    plt.grid(True, alpha=0.3, which='both')
-    plt.tight_layout()
-    plt.savefig('diferenca_linear_nao_linear.png', dpi=300, bbox_inches='tight')
-    print("\nGráfico 'diferenca_linear_nao_linear.png' salvo.")
-    plt.show()
-    
-    # GRÁFICO ADICIONAL: Diferença relativa
-    plt.figure(figsize=(10, 6))
-    
-    for Nu in Nu_valores:
-        y_linear = resultados[Nu]['linear']['y']
-        y_nao_linear = resultados[Nu]['nao_linear']['y']
+    #     diferenca_relativa = np.abs((y_nao_linear - y_linear) / (np.abs(y_linear) + 1e-16))
         
-        # Diferença relativa (evitando divisão por zero)
-        diferenca_relativa = np.abs((y_nao_linear - y_linear) / (np.abs(y_linear) + 1e-16))
-        
-        plt.semilogy(x_vec, diferenca_relativa, linewidth=2, label=f'Nu = {Nu}')
+    #     plt.semilogy(x_vec, diferenca_relativa, linewidth=2, label=f'Nu = {Nu}')
     
-    plt.xlabel('x')
-    plt.ylabel('Erro relativo: |y_nl - y_l| / |y_l|')
-    plt.title('Tarefa 3: Diferença Relativa entre soluções (f₀ = 1)')
-    plt.legend()
-    plt.grid(True, alpha=0.3, which='both')
-    plt.tight_layout()
-    plt.savefig('diferenca_relativa_linear_nao_linear.png', dpi=300, bbox_inches='tight')
-    print("Gráfico 'diferenca_relativa_linear_nao_linear.png' salvo.")
-    plt.show()
+    # plt.xlabel('x')
+    # plt.ylabel('Erro relativo: |y_nl - y_l| / |y_l|')
+    # plt.title('Tarefa 3: Diferença Relativa entre soluções (f₀ = 1)')
+    # plt.legend()
+    # plt.grid(True, alpha=0.3, which='both')
+    # plt.tight_layout()
+    # plt.savefig('diferenca_relativa_linear_nao_linear.png', dpi=300, bbox_inches='tight')
+    # print("Gráfico 'diferenca_relativa_linear_nao_linear.png' salvo.")
+    # plt.show()
     
 # =============================================================================
 # RESULTADOS EM VALORES E GRÁFICOS
@@ -1093,7 +970,7 @@ if __name__ == "__main__":
     print("="*90)
     resultados_tn3 = tarefaNumerica3()
     plotarComparacaoLinearNaoLinear(resultados_tn3)
-    plotarDiferencaLinearNaoLinear(resultados_tn3)
+    #plotarDiferencaLinearNaoLinear(resultados_tn3)
 
     print("\n\n" + "="*90)
     print("TODAS AS TAREFAS FORAM EXECUTADAS E OS RESULTADOS FORAM GERADOS.")
