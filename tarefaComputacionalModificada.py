@@ -104,7 +104,7 @@ def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
                       [-h * r(x_k1, Nu) / p(x_k1), 1]])
         
         b = np.array([y[k],
-                      z[k] - h * f(x_k1, f0) / p(x_k1)]) # Correção: f0 era somado, deve ser subtraído (ou f é subtraído no sistema)
+                      z[k] + h * f(x_k1, f0) / p(x_k1)]) # Correção: f0 era somado, deve ser subtraído (ou f é subtraído no sistema)
         
         # Vamos reescrever o sistema para evitar confusão de sinal
         # y[k+1] - h*z[k+1] = y[k]
@@ -161,6 +161,54 @@ def trapezio_explicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     
     return y
 
+def euler_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
+    """
+    Método de Euler Implícito
+    """
+    n = len(x_vec) - 1
+    h = x_vec[1] - x_vec[0]
+    
+    # Criar vetores para y e z
+    y = np.zeros(n + 1)
+    z = np.zeros(n + 1)
+    
+    # Condições iniciais
+    y[0] = y0
+    z[0] = dy0
+    
+    # Loop de integração
+    for k in range(n):
+        x_k1 = x_vec[k + 1]
+        
+        r_ratio = r(x_k1, Nu) / p(x_k1)
+        f_ratio = f(x_k1, f0) / p(x_k1)
+        
+        # Verificar se a matriz será singular
+        # det(A) = 1 - h² * r_ratio
+        det = 1 - h**2 * r_ratio
+        
+        if abs(det) < 1e-10:
+            print(f"\n❌ ERRO: Matriz singular no método Euler Implícito!")
+            print(f"   Parâmetros: h = {h}, Nu = {Nu}")
+            print(f"   Determinante: det(A) = 1 - h² * Nu = {det:.2e}")
+            print(f"   Condição de singularidade: h² * Nu ≈ 1")
+            print(f"   Valor atual: h² * Nu = {h**2 * Nu:.6f}")
+            print(f"   Sugestão: Use h < {1.0/np.sqrt(Nu):.6f} para este Nu\n")
+            raise ValueError(f"Matriz singular: h={h}, Nu={Nu} resulta em h²*Nu={h**2*Nu:.6f} ≈ 1")
+        
+        A = np.array([[1, -h],
+                      [-h * r_ratio, 1]])
+        
+        b = np.array([y[k],
+                      z[k] - h * f_ratio])
+
+        sol = np.linalg.solve(A, b)
+        
+        y[k + 1] = sol[0]
+        z[k + 1] = sol[1]
+    
+    return y
+
 def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
     """
     Método do Trapézio Implícito
@@ -184,20 +232,27 @@ def trapezio_implicito(x_vec, y0, dy0, Nu=1.0, f0=0.0):
         # Calcular dz_dx no ponto k (explícito)
         dz_dx_k = (r(x_k, Nu) * y[k] - f(x_k, f0)) / p(x_k)
 
-        # Sistema linear:
-        # y[k+1] = y[k] + h/2 * (z[k] + z[k+1])
-        # z[k+1] = z[k] + h/2 * (dz_dx_k + dz_dx_k1)
-        # onde dz_dx_k1 = (r(x_k1)*y[k+1] - f(x_k1)) / p(x_k1)
+        r_ratio = r(x_k1, Nu) / p(x_k1)
+        f_ratio = f(x_k1, f0) / p(x_k1)
         
-        # Rearranjando:
-        # y[k+1] - (h/2)*z[k+1] = y[k] + (h/2)*z[k]
-        # -(h/2)*(r/p)*y[k+1] + z[k+1] = z[k] + (h/2)*dz_dx_k - (h/2)*(f/p)
+        # Verificar se a matriz será singular
+        # det(A) = 1 - (h/2)² * r_ratio
+        det = 1 - (h/2)**2 * r_ratio
+        
+        if abs(det) < 1e-10:
+            print(f"\n❌ ERRO: Matriz singular no método Trapézio Implícito!")
+            print(f"   Parâmetros: h = {h}, Nu = {Nu}")
+            print(f"   Determinante: det(A) = 1 - (h/2)² * Nu = {det:.2e}")
+            print(f"   Condição de singularidade: (h/2)² * Nu ≈ 1")
+            print(f"   Valor atual: (h/2)² * Nu = {(h/2)**2 * Nu:.6f}")
+            print(f"   Sugestão: Use h < {2.0/np.sqrt(Nu):.6f} para este Nu\n")
+            raise ValueError(f"Matriz singular: h={h}, Nu={Nu} resulta em (h/2)²*Nu={(h/2)**2*Nu:.6f} ≈ 1")
         
         A = np.array([[1, -h/2],
-                      [-h/2 * r(x_k1, Nu) / p(x_k1), 1]])
+                      [-h/2 * r_ratio, 1]])
 
         b = np.array([y[k] + (h/2) * z[k],
-                      z[k] + (h/2) * (dz_dx_k - f(x_k1, f0) / p(x_k1))]) # Correção: f0 era somado, deve ser subtraído
+                      z[k] + (h/2) * dz_dx_k - (h/2) * f_ratio])
 
         sol = np.linalg.solve(A, b)
         
@@ -360,7 +415,7 @@ def teste_tarefas_computacionais():
     print("="*70)
     print("TESTANDO OS MÉTODOS NUMÉRICOS (TAREFAS COMPUTACIONAIS 1 E 2)")
     print("="*70)
-    
+
     # Parâmetros do teste
     n = 100
     x_vec = np.linspace(0, 1, n + 1)
@@ -455,10 +510,10 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
         resolver = runge_kutta_4
     
     # Resolver problema auxiliar 1: v(0)=1, v'(0)=0
-    v = resolver(x_vec, 1.0, 0.0, Nu, 0.0)  # f=0 para homogêneo
+    v = resolver(x_vec, 1.0, 0.0, Nu, 0.0)  # y0=1, dy0=0, Nu=Nu, f0=0
     
     # Resolver problema auxiliar 2: w(0)=0, w'(0)=1
-    w = resolver(x_vec, 0.0, 1.0, Nu, 0.0)  # f=0 para homogêneo    
+    w = resolver(x_vec, 0.0, 1.0, Nu, 0.0)  # y0=0, dy0=1, Nu=Nu, f0=0
 
     # Resolver problema particular se f0 != 0
     if abs(f0) > 1e-12:
@@ -467,13 +522,7 @@ def metodoDisparo(x_vec, alpha, beta, Nu, f0, metodo):
         u_p = np.zeros_like(v)
     
     # Determinar coeficientes a e b
-    # y(0) = a*v(0) + b*w(0) + u_p(0)
-    # alpha = a*1 + b*0 + 0 -> a = alpha
-    a = alpha - u_p[0] # u_p[0] é 0 pelas C.I., mas deixamos por consistência
-    
-    # y(1) = a*v(1) + b*w(1) + u_p(1)
-    # beta = a*v(L) + b*w(L) + u_p(L)
-    # b = (beta - a*v(L) - u_p(L)) / w(L)
+    a = alpha - u_p[0]
     b = (beta - a * v[-1] - u_p[-1]) / w[-1]
     
     # Solução final
